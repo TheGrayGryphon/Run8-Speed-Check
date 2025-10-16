@@ -5,7 +5,7 @@ A bot for keeping track of players speed during normal operations. It can report
 The .props file is where you input all of your settings. It's just a text file with an abnormal extension. 
 
 Alert Speed: When player train speed is > TrainSpeedLimitMPH, tracking starts.
-Alert Speed Timer: If the player remains Alert Speed ? TrainSpeedLimitMPH for a certain amount of time, send a message. 
+Alert Speed Timer: If the player remains Alert Speed > TrainSpeedLimitMPH for a certain amount of time, send a message. 
 Over Speed: When player train speed is > TrainSpeedLimitMPH, a separate message is sent.
 Hard Couple Speed: If the AxleCount of a players train increases, use the previously reported speed in mph.
 
