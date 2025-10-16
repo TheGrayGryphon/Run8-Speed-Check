@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <DispatcherCommsPath>F:\Games\Run8\DispatcherComms.dll</DispatcherCommsPath>
+
+    <!-- Speed control -->
+    <AlertSpeed>5</AlertSpeed>
+    <OverSpeed>20</OverSpeed>
+    <AlertSpeedTimer>300</AlertSpeedTimer>
+    <HardCoupleSpeed>7</HardCoupleSpeed>
+
+    <!-- Trona Logic, will start tracking players at 45mph IF the player TrainSpeedLimitMPH is = 25 -->
+    <TronaAlertSpeed>20</TronaAlertSpeed>
+    <TronaRouteID>320</TronaRouteID>
+
+    <!-- Super C (speedy bois), will allow for freight to run at passenger speeds. -->
+    <SuperCAlertSpeed>25</SuperCAlertSpeed>
+    <SuperCTrainSymbols>991,981,119,198,Super</SuperCTrainSymbols>
+
+    <!-- Discord settings 1326410472731447426-->
+    <DiscordEnabled>false</DiscordEnabled>
+    <DiscordBotToken>BOT-TOKEN-HERE</DiscordBotToken>
+    <DiscordAlertChannel>STAFF-CHANNEL</DiscordAlertChannel>
+    <DiscordStatusChannel>LOG-CHANNEL</DiscordStatusChannel>
+  </PropertyGroup>
+</Project>
