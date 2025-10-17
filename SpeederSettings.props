@@ -9,7 +9,7 @@
     <HardCoupleSpeed>7</HardCoupleSpeed>
 
     <!-- Trona Logic, will start tracking players at 45mph IF the player TrainSpeedLimitMPH is = 25 -->
-    <TronaAlertSpeed>20</TronaAlertSpeed>
+    <TronaAlertSpeed>15</TronaAlertSpeed>
     <TronaRouteID>320</TronaRouteID>
 
     <!-- Super C (speedy bois), will allow for freight to run at passenger speeds. -->
@@ -23,3 +23,4 @@
     <DiscordStatusChannel>LOG-CHANNEL</DiscordStatusChannel>
   </PropertyGroup>
 </Project>
+
