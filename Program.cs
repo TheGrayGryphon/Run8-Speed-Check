@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
-using System.Reflection;
 using DispatcherComms;
 using DispatcherComms.Run8Proxy;
 using DispatcherComms.MessagesFromRun8;
@@ -27,6 +26,8 @@ namespace Speeder
         private static readonly Dictionary<int, EEngineerType> lastEngineerType = new Dictionary<int, EEngineerType>();
         private static readonly Dictionary<int, string> lastPlayerName = new Dictionary<int, string>();
         private static readonly Dictionary<int, string> lastTrainSymbol = new Dictionary<int, string>();
+        private static readonly Dictionary<int, DateTime> speedExceedStart = new Dictionary<int, DateTime>();
+        private const double SpeedConfirmationSeconds = 5.0;
 
         private static DateTime lastSimTime = DateTime.MinValue;
         private static bool hasWarnedNoRun8 = false;
@@ -39,9 +40,11 @@ namespace Speeder
         private static double overSpeed = 20;
         private static int alertSpeedTimer = 300;
         private static double hardCoupleSpeed = 7;
-        private static double tronaAlertSpeed = 20;
-        private static int tronaRouteID = 320;
-        private static double superCAlertSpeed = 25;
+
+        // Special effective limit adjustments
+        private static double tronaAlertSpeed = 20; // amount to add to limit for Trona
+        private static int tronaRouteID = 320;      // BlockIDs starting with 320*
+        private static double superCAlertSpeed = 25; // amount to add to limit for SuperC
         private static string superCTrainSymbols = "991,981,119,198,Super";
 
         // Discord
@@ -156,20 +159,41 @@ namespace Speeder
         {
             try
             {
-                DiscordSocketConfig cfg = new DiscordSocketConfig();
-                cfg.LogLevel = LogSeverity.Info;
-
+                DiscordSocketConfig cfg = new DiscordSocketConfig
+                {
+                    LogLevel = LogSeverity.Info
+                };
+        
                 discordClient = new DiscordSocketClient(cfg);
                 discordClient.Log += msg =>
                 {
                     Console.WriteLine("[Discord] " + msg.ToString());
                     return Task.FromResult(0);
                 };
-
+        
+                // Wait for Ready event before continuing
+                TaskCompletionSource<bool> readyTcs = new TaskCompletionSource<bool>();
+        
+                discordClient.Ready += () =>
+                {
+                    Console.WriteLine("[Discord] Gateway Ready received.");
+                    readyTcs.TrySetResult(true);
+                    return Task.FromResult(0);
+                };
+        
                 await discordClient.LoginAsync(TokenType.Bot, discordToken);
                 await discordClient.StartAsync();
-
+        
+                // Wait for Ready event (or timeout if something goes wrong)
+                await Task.WhenAny(readyTcs.Task, Task.Delay(10000));
+        
+                if (!readyTcs.Task.IsCompleted)
+                {
+                    Console.WriteLine("[Discord] Warning: Gateway Ready not received within 10 seconds.");
+                }
+        
                 Console.WriteLine("[Discord] Bot connected successfully.");
+        
                 string startMsg =
                     $"**Speeder startup complete and connected to Run8.**\n" +
                     $"AlertSpeed = {alertSpeed}\n" +
@@ -178,6 +202,7 @@ namespace Speeder
                     $"HardCoupleSpeed = {hardCoupleSpeed} MPH\n" +
                     $"Trona = {tronaAlertSpeed}\n" +
                     $"SuperC = {superCAlertSpeed}";
+        
                 await DiscordSendAsync(discordStatusChannel, startMsg);
             }
             catch (Exception ex)
@@ -186,6 +211,7 @@ namespace Speeder
                 discordEnabled = false;
             }
         }
+
 
         private static async Task DiscordSendAsync(ulong channelId, string msg)
         {
@@ -201,13 +227,20 @@ namespace Speeder
                 Console.WriteLine("[Discord] Send failed: " + ex.Message);
             }
         }
-        private static void OnConnected(object s, EventArgs e)
+
+        private static void OnConnected(object sender, EventArgs e)
         {
-            lock (lockObj) { isConnected = true; hasWarnedNoRun8 = false; hasReceivedData = false; startupComplete = false; }
+            lock (lockObj)
+            {
+                isConnected = true;
+                hasWarnedNoRun8 = false;
+                hasReceivedData = false;
+                startupComplete = false;
+            }
             Console.WriteLine("[" + DateTime.Now.ToString("T") + "] Run8 instance detected.");
         }
 
-        private static void OnDisconnected(object s, EventArgs e)
+        private static void OnDisconnected(object sender, EventArgs e)
         {
             lock (lockObj)
             {
@@ -218,12 +251,13 @@ namespace Speeder
             }
         }
 
-        private static void OnSimulationState(object s, SimulationStateEventArgs e)
+        private static void OnSimulationState(object sender, SimulationStateEventArgs e)
         {
             lock (lockObj)
             {
                 lastSimTime = e.SimulationTime;
                 hasReceivedData = true;
+
                 if (!startupComplete)
                 {
                     startupComplete = true;
@@ -234,48 +268,62 @@ namespace Speeder
             }
         }
 
-        private static void OnTrainData(object s, TrainDataEventArgs e)
+        private static void OnTrainData(object sender, TrainDataEventArgs e)
         {
             lock (lockObj)
             {
+                hasReceivedData = true;
                 dynamic train = e.Train;
                 int id = train.TrainID;
                 DateTime simNow = lastSimTime == DateTime.MinValue ? DateTime.Now : lastSimTime;
-                EEngineerType current = (EEngineerType)train.EngineerType;
-                if (!lastEngineerType.TryGetValue(id, out var prev)) prev = current;
+
+                EEngineerType currentEngineerType = (EEngineerType)train.EngineerType;
+                if (!lastEngineerType.TryGetValue(id, out var previousEngineerType))
+                    previousEngineerType = currentEngineerType;
 
                 // Relinquish
-                if (prev == EEngineerType.Player && current != EEngineerType.Player)
+                if (previousEngineerType == EEngineerType.Player && currentEngineerType != EEngineerType.Player)
                 {
-                    string name = lastPlayerName.ContainsKey(id) ? lastPlayerName[id] : (string)train.EngineerName;
-                    string sym = lastTrainSymbol.ContainsKey(id) ? lastTrainSymbol[id] : (string)train.TrainSymbol;
-                    string msg = $"[{simNow:T}] {name} relinquished control of {sym}.";
+                    string engineerName = lastPlayerName.ContainsKey(id) ? lastPlayerName[id] : (string)train.EngineerName;
+                    string trainSymbol = lastTrainSymbol.ContainsKey(id) ? lastTrainSymbol[id] : (string)train.TrainSymbol;
+                    string msg = $"[{simNow:T}] {engineerName} relinquished control of {trainSymbol}.";
                     Console.WriteLine(msg);
-                    if (discordEnabled) Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
-                    activePlayers.Remove(id); speedingStart.Remove(id); maxOverspeed.Remove(id);
-                    overSpeedWarned.Remove(id); sustainedWarned.Remove(id);
-                    lastAxleCount.Remove(id); lastSpeed.Remove(id);
-                    lastPlayerName.Remove(id); lastTrainSymbol.Remove(id);
+                    if (discordEnabled)
+                        Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
+
+                    activePlayers.Remove(id);
+                    speedingStart.Remove(id);
+                    maxOverspeed.Remove(id);
+                    overSpeedWarned.Remove(id);
+                    sustainedWarned.Remove(id);
+                    lastAxleCount.Remove(id);
+                    lastSpeed.Remove(id);
+                    lastPlayerName.Remove(id);
+                    lastTrainSymbol.Remove(id);
+                    speedExceedStart.Remove(id);
                 }
 
-                // Player trains
-                if (current == EEngineerType.Player)
+                if (currentEngineerType == EEngineerType.Player)
                 {
-                    string eng = train.EngineerName; if (!string.IsNullOrWhiteSpace(eng)) lastPlayerName[id] = eng;
-                    string sym = train.TrainSymbol; if (!string.IsNullOrWhiteSpace(sym)) lastTrainSymbol[id] = sym;
+                    string currentEngineerName = train.EngineerName;
+                    if (!string.IsNullOrWhiteSpace(currentEngineerName))
+                        lastPlayerName[id] = currentEngineerName;
+                    string currentTrainSymbol = train.TrainSymbol;
+                    if (!string.IsNullOrWhiteSpace(currentTrainSymbol))
+                        lastTrainSymbol[id] = currentTrainSymbol;
 
-                    double curSpeed = train.TrainSpeedMph;
-                    double lastKnown = lastSpeed.ContainsKey(id) ? lastSpeed[id] : curSpeed;
-                    lastSpeed[id] = curSpeed;
+                    double currentSpeed = train.TrainSpeedMph;
+                    double lastKnownSpeed = lastSpeed.ContainsKey(id) ? lastSpeed[id] : currentSpeed;
+                    lastSpeed[id] = currentSpeed;
 
-                    int axles = train.AxleCount;
-                    if (lastAxleCount.ContainsKey(id) && axles > lastAxleCount[id])
+                    int axleCount = train.AxleCount;
+                    if (lastAxleCount.ContainsKey(id) && axleCount > lastAxleCount[id])
                     {
-                        string msg = $"[{simNow:T}] {eng} on {sym} coupled at {lastKnown:F1} MPH";
+                        string msg = $"[{simNow:T}] {train.EngineerName} on {train.TrainSymbol} coupled at {lastKnownSpeed:F1} MPH";
                         Console.WriteLine(msg);
                         if (discordEnabled)
                         {
-                            if (lastKnown <= hardCoupleSpeed)
+                            if (lastKnownSpeed <= hardCoupleSpeed)
                             {
                                 Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
                             }
@@ -286,110 +334,160 @@ namespace Speeder
                             }
                         }
                     }
-                    lastAxleCount[id] = axles;
+                    lastAxleCount[id] = axleCount;
 
                     if (!activePlayers.ContainsKey(id))
                     {
                         activePlayers[id] = simNow;
-                        string msg = $"[{simNow:T}] {eng} took control of {sym}, Loco: {train.RailroadInitials} {train.LocoNumber}, TrainID: {id}";
+                        string msg = $"[{simNow:T}] {train.EngineerName} took control of {train.TrainSymbol}, Loco: {train.RailroadInitials} {train.LocoNumber}, TrainID: {train.TrainID}";
                         Console.WriteLine(msg);
-                        if (discordEnabled) Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
+                        if (discordEnabled)
+                            Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
                     }
                     else activePlayers[id] = simNow;
 
                     HandleSpeeding(train, id, simNow);
                 }
 
-                lastEngineerType[id] = current;
+                lastEngineerType[id] = currentEngineerType;
             }
         }
 
         private static void HandleSpeeding(dynamic train, int id, DateTime simNow)
         {
+            // Base values
             double current = train.TrainSpeedMph;
             double limit = train.TrainSpeedLimitMPH;
             double curAbs = Math.Abs(current);
             double limAbs = Math.Abs(limit);
-            double overNow = curAbs - limAbs;
 
-            // Adjust effective limit instead of alert speed
+            // Effective limit adjustments (SuperC priority over Trona)
             double effectiveLimit = limAbs;
             string symUp = ((string)train.TrainSymbol).ToUpperInvariant();
             int blk = (int)train.BlockID;
+
             string[] superList = superCTrainSymbols.Split(',').Select(x => x.Trim().ToUpperInvariant()).ToArray();
-
             bool isSuper = superList.Any(s => symUp.Contains(s));
-            bool isTrona = blk.ToString().StartsWith(tronaRouteID.ToString()) && Math.Abs(train.TrainSpeedLimitMPH - 25);
+            bool isTrona = blk.ToString().StartsWith(tronaRouteID.ToString()) && train.TrainSpeedLimitMPH == 25;
 
-            if (isSuper) effectiveLimit += superCAlertSpeed;
-            else if (isTrona) effectiveLimit += tronaAlertSpeed;
+            if (isSuper) effectiveLimit = superCAlertSpeed + limit;
+            else if (isTrona) effectiveLimit = tronaAlertSpeed + limit;
 
-            bool wasSpeed = speedingStart.ContainsKey(id);
-            bool isSpeed = curAbs > effectiveLimit + alertSpeed;
-            bool stopSpeed = wasSpeed && curAbs < effectiveLimit + alertSpeed - 1.0;
+            // Thresholds and states
+            bool wasSpeeding = speedingStart.ContainsKey(id);
+            bool aboveAlert = curAbs > effectiveLimit + alertSpeed;
+            bool aboveOver = curAbs > effectiveLimit + overSpeed;
 
-            if (isSpeed)
+            // Hysteresis for stopping speeding state (require 1 MPH below threshold)
+            bool stopSpeeding = wasSpeeding && curAbs < effectiveLimit + alertSpeed - 1.0;
+
+            // --- 5-second SimTime confirmation BEFORE sending "began speeding" ---
+            if (aboveAlert)
             {
-                if (!wasSpeed)
+                if (!speedExceedStart.ContainsKey(id))
+                    speedExceedStart[id] = simNow;
+
+                double exceedDuration = (simNow - speedExceedStart[id]).TotalSeconds;
+
+                // Send "began speeding" only after 5 seconds of continuous exceed
+                if (!wasSpeeding && exceedDuration >= SpeedConfirmationSeconds)
                 {
-                    speedingStart[id] = simNow; maxOverspeed[id] = 0; sustainedWarned.Remove(id);
+                    speedingStart[id] = simNow;
+                    maxOverspeed[id] = 0;
+                    sustainedWarned.Remove(id);
+
                     string msg = $"[{simNow:T}] {train.EngineerName}, {train.TrainSymbol}, {id} began speeding in block {train.BlockID}. ({current:F1}/{limit:F1} MPH)";
                     Console.WriteLine(msg);
-                    if (discordEnabled) Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
+                    if (discordEnabled)
+                        Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
                 }
 
-                if (maxOverspeed.ContainsKey(id)) maxOverspeed[id] = Math.Max(maxOverspeed[id], overNow);
-
-                if (curAbs > effectiveLimit + overSpeed && !overSpeedWarned.Contains(id))
+                // Track max overspeed if we're already in speeding state
+                if (wasSpeeding && maxOverspeed.ContainsKey(id))
                 {
-                    string msg = $"[{simNow:T}] {train.EngineerName}, {train.TrainSymbol} needs to be banned for speeding {overNow:F1} MPH over in block {train.BlockID}. ({current:F1}/{limit:F1})";
-                    Console.WriteLine(msg);
-                    if (discordEnabled) Task.Run(() => DiscordSendAsync(discordAlertChannel, msg));
+                    double overNow = curAbs - limAbs; // amount over the BASE posted limit (kept as in previous logic)
+                    if (overNow > maxOverspeed[id]) maxOverspeed[id] = overNow;
+                }
+
+                // Overspeed BAN should NOT wait 5 seconds (per requirement)
+                if (aboveOver && !overSpeedWarned.Contains(id))
+                {
+                    string banMsg = $"[{simNow:T}] {train.EngineerName}, {train.TrainSymbol} needs to be banned for speeding {curAbs - limAbs:F1} MPH over in block {train.BlockID}. ({current:F1}/{limit:F1})";
+                    Console.WriteLine(banMsg);
+                    if (discordEnabled)
+                        Task.Run(() => DiscordSendAsync(discordAlertChannel, banMsg));
                     overSpeedWarned.Add(id);
                 }
-                else if (wasSpeed && !sustainedWarned.Contains(id) && (simNow - speedingStart[id]).TotalSeconds > alertSpeedTimer)
+
+                // Sustained ban (still based on when speeding actually began)
+                if (wasSpeeding && !sustainedWarned.Contains(id) && (simNow - speedingStart[id]).TotalSeconds > alertSpeedTimer)
                 {
-                    string msg = $"[{simNow:T}] {train.EngineerName}, {train.TrainSymbol} needs to be banned for sustained speeding ({alertSpeedTimer / 60.0:F1} minutes above the limit) in block {train.BlockID}.";
-                    Console.WriteLine(msg);
-                    if (discordEnabled) Task.Run(() => DiscordSendAsync(discordAlertChannel, msg));
+                    string banMsg = $"[{simNow:T}] {train.EngineerName}, {train.TrainSymbol} needs to be banned for sustained speeding ({alertSpeedTimer / 60.0:F1} minutes above the limit) in block {train.BlockID}.";
+                    Console.WriteLine(banMsg);
+                    if (discordEnabled)
+                        Task.Run(() => DiscordSendAsync(discordAlertChannel, banMsg));
                     sustainedWarned.Add(id);
                 }
             }
-            else if (stopSpeed)
+            else
             {
-                DateTime start = speedingStart[id];
-                double dur = (simNow - start).TotalSeconds;
-                double maxOver = maxOverspeed.ContainsKey(id) ? maxOverspeed[id] : 0;
-                string msg = $"[{simNow:T}] {train.EngineerName}, {train.TrainSymbol} is no longer speeding in block {train.BlockID}. Duration: ({dur / 60.0:F1} minutes, Speed limit exceeded by: {maxOver:F1} MPH.)";
-                Console.WriteLine(msg);
-                if (discordEnabled)
+                // Immediately reset confirmation timer when dropping below alert threshold
+                speedExceedStart.Remove(id);
+
+                // Handle "no longer speeding" with hysteresis
+                if (stopSpeeding)
                 {
-                    Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
-                    if (overSpeedWarned.Contains(id) || sustainedWarned.Contains(id))
-                        Task.Run(() => DiscordSendAsync(discordAlertChannel, msg));
+                    DateTime start = speedingStart[id];
+                    double duration = (simNow - start).TotalSeconds;
+                    double maxOver = maxOverspeed.ContainsKey(id) ? maxOverspeed[id] : 0;
+                    string msg = $"[{simNow:T}] {train.EngineerName}, {train.TrainSymbol} is no longer speeding in block {train.BlockID}. Duration: ({duration / 60.0:F1} minutes, Speed limit exceeded by: {maxOver:F1} MPH.)";
+                    Console.WriteLine(msg);
+                    if (discordEnabled)
+                    {
+                        Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
+                        if (overSpeedWarned.Contains(id) || sustainedWarned.Contains(id))
+                            Task.Run(() => DiscordSendAsync(discordAlertChannel, msg));
+                    }
+
+                    speedingStart.Remove(id);
+                    maxOverspeed.Remove(id);
+                    overSpeedWarned.Remove(id);
+                    sustainedWarned.Remove(id);
                 }
-                speedingStart.Remove(id); maxOverspeed.Remove(id); overSpeedWarned.Remove(id); sustainedWarned.Remove(id);
             }
         }
 
         private static void MonitorPlayerTrains()
         {
-            const int timeout = 2;
+            const int timeoutSeconds = 2;
             while (true)
             {
                 Thread.Sleep(1000);
                 lock (lockObj)
                 {
                     DateTime simNow = lastSimTime == DateTime.MinValue ? DateTime.Now : lastSimTime;
-                    var stale = activePlayers.Where(k => (simNow - k.Value).TotalSeconds > timeout).Select(k => k.Key).ToList();
+                    List<int> stale = activePlayers
+                        .Where(kv => (simNow - kv.Value).TotalSeconds > timeoutSeconds)
+                        .Select(kv => kv.Key)
+                        .ToList();
+
                     foreach (int id in stale)
                     {
                         string msg = $"[{simNow:T}] Player train {id} no longer reporting data.";
                         Console.WriteLine(msg);
-                        if (discordEnabled) Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
+                        if (discordEnabled)
+                            Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
+
                         activePlayers.Remove(id);
-                        speedingStart.Remove(id); maxOverspeed.Remove(id); overSpeedWarned.Remove(id);
-                        sustainedWarned.Remove(id); lastAxleCount.Remove(id); lastSpeed.Remove(id);
+                        speedingStart.Remove(id);
+                        maxOverspeed.Remove(id);
+                        overSpeedWarned.Remove(id);
+                        sustainedWarned.Remove(id);
+                        lastAxleCount.Remove(id);
+                        lastSpeed.Remove(id);
+                        lastPlayerName.Remove(id);
+                        lastTrainSymbol.Remove(id);
+                        speedExceedStart.Remove(id);
                     }
                 }
             }
