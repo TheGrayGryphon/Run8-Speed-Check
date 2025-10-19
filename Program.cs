@@ -323,7 +323,7 @@ namespace Speeder
                         Console.WriteLine(msg);
                         if (discordEnabled)
                         {
-                            if (lastKnownSpeed <= hardCoupleSpeed)
+                            if (Math.Abs(lastKnownSpeed) <= hardCoupleSpeed)
                             {
                                 Task.Run(() => DiscordSendAsync(discordStatusChannel, msg));
                             }
@@ -494,3 +494,4 @@ namespace Speeder
         }
     }
 }
+
