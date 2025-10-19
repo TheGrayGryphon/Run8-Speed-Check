@@ -14,7 +14,7 @@ Special Cases:
 * Trona: Many players allow for 40mph operation, so the TrainSpeedLimitMPH needs to be offset in all blocks in the Trona DLC that have 25mph speed limits. 
 
 Discord settings:
-* Discord Enabled: Falso if there's no integration with discord, true if you want reporting sent to channels
+* Discord Enabled: `false` if there's no integration with discord, `true` if you want reporting sent to channels
 * Discord Bot Token: When setting up your Discord Bot in the Developer Portal, get the code and paste it here
 * Discord Alert Channel: This is wwhere egregious warnings are sent and will indicate server stability is at risk, a staff only channel is wise
 * Discord Status Channel: The bot will send player status messages as they happen, useful for tracking down a players habbits. 
