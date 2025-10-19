@@ -11,7 +11,7 @@ The .props file is where you input all of your settings. It's just a text file w
 
 Special Cases:
 * Super C: The speedy intermodals that were capable of passenger speeds will have their TrainSpeedLimitMPH offset by the numeric value. The entered symbols are comma delimted, no spaces, and only need to contain part of the symbol
-Trona: Many players allow for 40mph operation, so the TrainSpeedLimitMPH needs to be offset in all blocks in the Trona DLC that have 25mph speed limits. 
+* Trona: Many players allow for 40mph operation, so the TrainSpeedLimitMPH needs to be offset in all blocks in the Trona DLC that have 25mph speed limits. 
 
 Discord settings:
 * Discord Enabled: Falso if there's no integration with discord, true if you want reporting sent to channels
