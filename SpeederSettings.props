@@ -16,11 +16,12 @@
     <SuperCAlertSpeed>25</SuperCAlertSpeed>
     <SuperCTrainSymbols>991,981,119,198,Super</SuperCTrainSymbols>
 
-    <!-- Discord settings 1326410472731447426-->
+    <!-- Discord settings-->
     <DiscordEnabled>false</DiscordEnabled>
     <DiscordBotToken>BOT-TOKEN-HERE</DiscordBotToken>
     <DiscordAlertChannel>STAFF-CHANNEL</DiscordAlertChannel>
     <DiscordStatusChannel>LOG-CHANNEL</DiscordStatusChannel>
   </PropertyGroup>
 </Project>
+
 
