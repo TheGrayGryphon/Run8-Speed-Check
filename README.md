@@ -1,5 +1,5 @@
 # Run8-Speed-Check
-A bot for keeping track of players speed during normal operations. It can report locally to jsut the console, or to Discord Channels. This works by interfacing with DispatcherComms.dll in your main install directory of Run8. 
+A bot for keeping track of players speed during normal operations. It can report locally to just the console, or to Discord Channels. This works by interfacing with DispatcherComms.dll in your main install directory of Run8. 
 
 
 The .props file is where you input all of your settings. It's just a text file with an abnormal extension. 
