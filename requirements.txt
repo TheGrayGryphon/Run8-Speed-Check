@@ -1,0 +1,4 @@
+pythonnet==3.0.3
+discord.py==2.3.2
+pyserial==3.5
+aiohttp==3.9.5
