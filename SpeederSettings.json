@@ -1,11 +1,7 @@
 {
   "AlertSpeed": 5,
-  "SpeedingStartMsg": "[{sim_now.time()}] {train.EngineerName}, {train.TrainSymbol}, {train_id} began speeding: block {train.BlockID}, {current:.1f}/{limit:.1f} MPH."
-  "SpeedingEndMsg": "[{sim_now.time()}] {train.EngineerName}, {train.TrainSymbol}, {train_id} is no longer speeding: block {train.BlockID}, duration {dur/60.0:.1f} minutes, speed limit exceeded by {max_over:.1f} MPH at peak."
   "OverSpeed": 20,
-  "OvrSpeedBanMsg": "[{sim_now.time()}] {train.EngineerName}, {train.TrainSymbol} {train_id} needs to be banned for speeding >={cur_abs - lim_abs:.1f} MPH over limit ({current:.1f}/{limit:.1f}) in block {train.BlockID}."
   "AlertSpeedTimer": 300,
-  "SustSpeedBanMsg": "[{sim_now.time()}] {train.EngineerName}, {train.TrainSymbol} {train_id} needs to be banned for sustained speeding ({alert_speed_timer/60.0:.1f} minutes above the limit) in block {train.BlockID}, max speed {max_over:.1f} MPH over limit."
   "HardCoupleSpeed": 7,
   "TronaAlertSpeed": 20,
   "TronaRouteID": 320,
@@ -18,5 +14,20 @@
   "DiscordAlertRole": "",
   "DiscordStatusChannel": 0,
   "DispatcherCommsPath": "F:\\Games\\Run8\\DispatcherComms.dll",
-  "VerboseLogging": true
+
+  "Messages": {
+    "ConnectedMsg": "[{stamp}] Run8 instance detected. Waiting on 'Allow External DS'",
+    "DisconnectedMsg": "[{stamp}] Disconnected from Run8.",
+    "SpeedingStartMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id} began speeding: block {train.BlockID}, {current:.1f}/{limit:.1f} MPH.",
+    "SpeedingEndMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id} is no longer speeding: block {train.BlockID}, duration {duration:.1f} minutes, speed limit exceeded by {max_over:.1f} MPH at peak.",
+    "OvrSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol} {train_id} needs to be banned for speeding >= {over:.1f} MPH over limit ({current:.1f}/{limit:.1f}) in block {train.BlockID}.",
+    "SustSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol} {train_id} needs to be banned for sustained speeding ({minutes:.1f} minutes above the limit) in block {train.BlockID}, max speed {max_over:.1f} MPH over limit.",
+    "CoupledMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol} coupled at {speed:.1f} MPH ",
+    "TrainTimeoutMsg": "[{sim_now}] Player train {train_id} no longer reporting data.",
+    "RelinquishMsg": "[{sim_now}] {train.EngineerName} relinquished control of {train.TrainSymbol}.",
+    "TookControlMsg": "[{sim_now}] {train.EngineerName} took control of {train.TrainSymbol}, Loco: {train.RailroadInitials} {train.LocoNumber}, TrainID: {train.TrainID}",
+    "AutomatedNoticeMsg": "This is an automated message.",
+    "ZeroLimitMsg": "{train.EngineerName}, relinquish your train after changing the `Leader` to remove the 0 MPH speed limit.",
+    "StartupCompleteMsg": "Speeder connected to Run8 and is monitoring trains."
+  }
 }
