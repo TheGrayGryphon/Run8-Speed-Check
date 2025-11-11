@@ -1,5 +1,5 @@
 # Run8-Speed-Check
-A bot for keeping track of players speed during normal operations. It can report locally to just the console, or to Discord Channels. This works by interfacing with DispatcherComms.dll in your main install directory of Run8. 
+A bot for keeping track of players speed during normal operations. It can report locally to just the console, or to Discord Channels. This works by interfacing with DispatcherComms.dll in your main install directory of Run8. A special thanks to Garrison and Sinistar for helping overcome my user-issues.
 
 This is created using Python 3.12.10, it will NOT work with any later version of Python due to *pythonnet* library dependencies. For instructions on how to make your Discord bot, youtube is your friend. If you ask me how to set it up, I will just repeat the instructions in a youtube video.
 
