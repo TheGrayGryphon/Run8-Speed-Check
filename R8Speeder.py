@@ -67,9 +67,9 @@ DISPATCHER_RADIO_CHANNEL = 0
 # SETTINGS
 # =========================================================
 def load_settings():
-    global alert_speed, over_speed, alert_speed_timer, hard_couple_speed
+    global alert_speed, over_speed, alert_speed_timer, hard_couple_speed, verbose_logging
     global trona_alert_speed, trona_route_id, superc_alert_speed, superc_train_symbols
-    global dispatcher_comms_path, discord_enabled, discord_token
+    global dispatcher_comms_path, discord_enabled, discord_token, discord_alert_role
     global discord_alert_channel, discord_status_channel, messages
 
     with open(SETTINGS_FILE, "r") as f:
@@ -79,6 +79,7 @@ def load_settings():
     over_speed = float(data["OverSpeed"])
     alert_speed_timer = int(data["AlertSpeedTimer"])
     hard_couple_speed = float(data["HardCoupleSpeed"])
+    verbose_logging = float(data["VerboseLogging"])
     trona_alert_speed = float(data["TronaAlertSpeed"])
     trona_route_id = int(data["TronaRouteID"])
     superc_alert_speed = float(data["SuperCAlertSpeed"])
@@ -89,6 +90,7 @@ def load_settings():
     discord_token = data["DiscordBotToken"]
     discord_alert_channel = int(data["DiscordAlertChannel"])
     discord_status_channel = int(data["DiscordStatusChannel"])
+    discord_alert_role = int(data["DiscordAlertRole"])
 
     messages = data["Messages"]  # full dictionary of message templates
 
@@ -307,7 +309,14 @@ def handle_speeding(train, train_id, sim_now):
                 over=(cur_abs - lim_abs)
             )
             print(msg)
-            discord_broadcast_alert(msg)
+            if discord_enabled:
+                if discord_alert_role != 0 and discord_alert_channel:
+                    if discord_status_channel:
+                        discord_send(discord_status_channel, msg)
+                    msg = "<@&" + str(discord_alert_role) + "> - " + msg
+                    discord_send(discord_alert_channel, msg)
+                else:
+                    discord_broadcast_alert(msg)
             overspeed_warned.add(train_id)
 
         if was_speeding and train_id not in sustained_warned:
@@ -339,8 +348,11 @@ def handle_speeding(train, train_id, sim_now):
                 block=train.BlockID
             )
             print(msg)
-            if discord_enabled and discord_status_channel:
-                discord_send(discord_status_channel, msg)
+            if discord_enabled:
+                if discord_status_channel:
+                    discord_send(discord_status_channel, msg)
+                if discord_alert_channel and (train_id in overspeed_warned or train_id in sustained_warned):
+                    discord_send(discord_alert_channel, msg)
             speeding_start.pop(train_id, None)
             max_overspeed.pop(train_id, None)
             overspeed_warned.discard(train_id)
@@ -398,10 +410,13 @@ def handle_coupling(train, train_id, sim_now):
         if msg:
             print(msg)
             if discord_enabled:
-                if discord_status_channel:
+                if discord_status_channel and verbose_logging:
                     discord_send(discord_status_channel, msg)
-                if previous_speed > hard_couple_speed and discord_alert_channel:
-                    discord_send(discord_alert_channel, msg)
+                if previous_speed > hard_couple_speed:
+                    if discord_alert_channel:
+                        discord_send(discord_alert_channel, msg)
+                    if not verbose_logging:
+                        discord_send(discord_status_channel, msg)
 
     # Update tracking
     last_axle_count[train_id] = current_axles
@@ -433,7 +448,7 @@ def on_train_data(sender, e):
         if previous_engineer_type == int(EEngineerType.Player) and current_engineer_type != int(EEngineerType.Player):
             msg = format_msg("RelinquishMsg", sim_now=sim_now, train=train)
             print(msg)
-            if discord_enabled and discord_status_channel:
+            if discord_enabled and discord_status_channel and verbose_logging:
                 discord_send(discord_status_channel, msg)
             for d in [active_players, speeding_start, max_overspeed, last_axle_count, last_speed,
                       axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start]:
@@ -452,7 +467,7 @@ def on_train_data(sender, e):
                 msg = format_msg("TookControlMsg", sim_now=sim_now, train=train)
                 print(msg)
                 send_zero_speed_limit_radio_if_needed(train)
-                if discord_enabled and discord_status_channel:
+                if discord_enabled and discord_status_channel and verbose_logging:
                     discord_send(discord_status_channel, msg)
             else:
                 active_players[train_id] = sim_now
@@ -492,7 +507,7 @@ def monitor_player_trains():
         for tid in stale:
             msg = format_msg("TrainTimeoutMsg", sim_now=sim_now, train_id=tid)
             print(msg)
-            if discord_enabled and discord_status_channel:
+            if discord_enabled and discord_status_channel and verbose_logging:
                 discord_send(discord_status_channel, msg)
             for d in [active_players, speeding_start, max_overspeed, last_axle_count, last_speed,
                       axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start]:
@@ -538,3 +553,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
