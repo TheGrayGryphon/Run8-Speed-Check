@@ -18,17 +18,18 @@ Setup Instructions:
   * DiscordAlertChannel: ID number, not the name - right click the channel name on Discord and copy the ID. Ideally a channel monitored by staff only, but this is up to you :)
   * DiscordStatusChannel: ID number - a channel that doesn't need active monitoring.  This lets staff read through the history and determine if a user has a habit of speeding/hard couples.
   * DiscordAlertRole: ID - not the name but the ID number. If you want to have the bot add a ping to that role ID for excessive speed messages. Leave 0 to disable.  You can manually edit any of the messages in the json to add this functionality to other messages.
-* AlertSpeed: When player train speed is AlertSpeed MPH > TrainSpeedLimitMPH, tracking starts.
-* AlertSpeedTimer: If the player remains AlertSpeed > TrainSpeedLimitMPH for AlertSpeedTimer seconds, send a message to the console and Discord (if configured).
-* OverSpeed: When player train speed is OverSpeed MPH > TrainSpeedLimitMPH, an excessive speed message is sent to the console and Discord (if configured as above).
-* HardCoupleSpeed: If the AxleCount of a player's train increases and their last known speed was > HardCoupleSpeed MPH, send a message to the console and Discord (if configured).
-* DispatcherCommsPath: Point this to your main Run8 directory, where your DispatcherComms.dll is already installed.
-* VerboseLogging: If true, all routine (non-alert) messages will be sent to Discord.  If false, only alert messages will be sent to Discord (but everything is still printed to the console).
-Special Cases:
-* SuperCAlertSpeed: The speedy intermodals that were capable of passenger speeds will have their TrainSpeedLimitMPH offset by the numeric value.
-* SuperCTrainSymbols: Comma delimited list of train symbols for the special speed limit. Do not include spaces, and partial symbols are ok.
-* TronaAlertSpeed: Many players allow for 40mph operation, so the TrainSpeedLimitMPH needs to be offset in all blocks in the Trona DLC that have 25mph speed limits.
-* TronaRouteID: Defines the route ID the program looks for to determine which block sections to apply the TronaAlertSpeed to. Normally this will not be changed.
+* Edit any necessary parameters related to your desired behavior for the bot:
+  * AlertSpeed: When player train speed is AlertSpeed MPH > TrainSpeedLimitMPH, tracking starts.
+  * AlertSpeedTimer: If the player remains AlertSpeed > TrainSpeedLimitMPH for AlertSpeedTimer seconds, send a message to the console and Discord (if configured).
+  * OverSpeed: When player train speed is OverSpeed MPH > TrainSpeedLimitMPH, an excessive speed message is sent to the console and Discord (if configured as above).
+  * HardCoupleSpeed: If the AxleCount of a player's train increases and their last known speed was > HardCoupleSpeed MPH, send a message to the console and Discord (if configured).
+  * DispatcherCommsPath: Point this to your main Run8 directory, where your DispatcherComms.dll is already installed.
+  * VerboseLogging: If true, all routine (non-alert) messages will be sent to Discord.  If false, only alert messages will be sent to Discord (but everything is still printed to the console).
+* Edit the following special case settings if needed:
+  * SuperCAlertSpeed: The speedy intermodals that were capable of passenger speeds will have their TrainSpeedLimitMPH offset by the numeric value.
+  * SuperCTrainSymbols: Comma delimited list of train symbols for the special speed limit. Do not include spaces, and partial symbols are ok.
+  * TronaAlertSpeed: Many players allow for 40mph operation, so the TrainSpeedLimitMPH needs to be offset in all blocks in the Trona DLC that have 25mph speed limits.
+  * TronaRouteID: Defines the route ID the program looks for to determine which block sections to apply the TronaAlertSpeed to. Normally this will not be changed.
 
 Launch Instructions: 
 Create a batch file using the examplebat.txt after creating your python virtual environment.
