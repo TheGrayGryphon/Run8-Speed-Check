@@ -30,6 +30,7 @@ last_player_name: Dict[int, str] = {}
 last_train_symbol: Dict[int, str] = {}
 speed_exceed_start: Dict[int, object] = {}
 prev_speed_snapshot: Dict[int, float] = {}
+last_hp_per_ton: Dict[int, float] = {}
 
 # State variables
 last_sim_time = None
@@ -237,22 +238,37 @@ def emit_disconnected_message():
 # TRAIN / RADIO / SPEEDING
 # =========================================================
 def send_zero_speed_limit_radio_if_needed(train):
+    global last_hp_per_ton
     if not mRun8:
         return
-    limit = int(train.TrainSpeedLimitMPH)
-    if limit == 0:
-        notice_template = messages.get("AutomatedNoticeMsg")
-        zero_template = messages.get("ZeroLimitMsg")
 
-        if notice_template:
-            notice_msg = notice_template.format(train=train)
-            if notice_msg:
-                mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, notice_msg)
+    try:
+        limit = int(train.TrainSpeedLimitMPH)
+    except Exception:
+        limit = 0
+    hp_per_ton = float(train.HpPerTon)
+    if hp_per_ton <= 0 or limit != 0:
+        return
 
-        if zero_template:
-            zero_msg = zero_template.format(train=train)
-            if zero_msg:
-                mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, zero_msg)
+    train_id = int(getattr(train, "TrainID", 0))
+    previous_hp = last_hp_per_ton.get(train_id)
+    if previous_hp is not None and previous_hp == hp_per_ton:
+        return
+
+    notice_template = messages.get("AutomatedNoticeMsg")
+    zero_template = messages.get("ZeroLimitMsg")
+
+    if notice_template:
+        notice_msg = notice_template.format(train=train)
+        if notice_msg:
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, notice_msg)
+
+    if zero_template:
+        zero_msg = zero_template.format(train=train)
+        if zero_msg:
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, zero_msg)
+
+    last_hp_per_ton[train_id] = hp_per_ton
 
 
 def handle_speeding(train, train_id, sim_now):
@@ -451,7 +467,8 @@ def on_train_data(sender, e):
             if discord_enabled and discord_status_channel and verbose_logging:
                 discord_send(discord_status_channel, msg)
             for d in [active_players, speeding_start, max_overspeed, last_axle_count, last_speed,
-                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start]:
+                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start,
+                      last_hp_per_ton]:
                 d.pop(train_id, None)
             overspeed_warned.discard(train_id)
             sustained_warned.discard(train_id)
@@ -466,12 +483,12 @@ def on_train_data(sender, e):
                 active_players[train_id] = sim_now
                 msg = format_msg("TookControlMsg", sim_now=sim_now, train=train)
                 print(msg)
-                send_zero_speed_limit_radio_if_needed(train)
                 if discord_enabled and discord_status_channel and verbose_logging:
                     discord_send(discord_status_channel, msg)
             else:
                 active_players[train_id] = sim_now
 
+            send_zero_speed_limit_radio_if_needed(train)
             handle_speeding(train, train_id, sim_now)
             handle_coupling(train, train_id, sim_now)
             last_speed[train_id] = current_speed
@@ -510,7 +527,8 @@ def monitor_player_trains():
             if discord_enabled and discord_status_channel and verbose_logging:
                 discord_send(discord_status_channel, msg)
             for d in [active_players, speeding_start, max_overspeed, last_axle_count, last_speed,
-                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start]:
+                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start,
+                      last_hp_per_ton]:
                 d.pop(tid, None)
             overspeed_warned.discard(tid)
             sustained_warned.discard(tid)
