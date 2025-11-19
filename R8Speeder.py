@@ -521,11 +521,12 @@ def monitor_player_trains():
     while True:
         time.sleep(1)
         now = time.time()
-        if periodic_announce_counter == periodic_announce_time:
+        if periodic_announce_counter == periodic_announce_time and periodic_announce_time != 0:
             mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, notice_msg)
             mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, periodic_announce_msg)
             periodic_announce_counter = 1
-        periodic_announce_counter += 1
+        if periodic_announce_time != 0:
+            periodic_announce_counter += 1
         if last_data_received_ts is not None and (now - last_data_received_ts) > 5:
             if not data_timeout_announced:
                 emit_disconnected_message()
