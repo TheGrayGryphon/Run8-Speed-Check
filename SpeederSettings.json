@@ -20,15 +20,6 @@
   "Messages": {
     "ConnectedMsg": "[{stamp}] Run8 instance detected. Waiting on 'Allow External DS'",
     "DisconnectedMsg": "[{stamp}] Disconnected from Run8.",
-    "SpeedingStartMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id}, began speeding: block {train.BlockID}, {current:.1f}/{limit:.1f} MPH.",
-    "SpeedingEndMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id}, is no longer speeding: block {train.BlockID}, duration {duration:.1f} minutes, speed limit exceeded by {max_over:.1f} MPH at peak.",
-    "OvrSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id}, is speeding excessively, >= {over:.1f} MPH over limit - {current:.1f}/{limit:.1f} - in block {train.BlockID}.",
-    "SustSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id}, has been speeding for >= {minutes} minutes - currently {current:.1f}/{limit:.1f} in block {train.BlockID}.",
-    "CoupledMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, coupled at {speed:.1f} MPH ",
-
-  "Messages": {
-    "ConnectedMsg": "[{stamp}] Run8 instance detected. Waiting on 'Allow External DS'",
-    "DisconnectedMsg": "[{stamp}] Disconnected from Run8.",
     "SpeedingStartMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id} began speeding: block {train.BlockID}, {current:.1f}/{limit:.1f} MPH.",
     "SpeedingEndMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id} is no longer speeding: block {train.BlockID}, duration {duration:.1f} minutes, speed limit exceeded by {max_over:.1f} MPH at peak.",
     "OvrSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol} {train_id} needs to be banned for speeding >= {over:.1f} MPH over limit ({current:.1f}/{limit:.1f}) in block {train.BlockID}.",
@@ -43,3 +34,4 @@
 	"PeriodicAnnounceMsg": "Notice: Train speeds are monitored. Severe/sustained speeding & hard coupling is auto reported to staff."
   }
 }
+
