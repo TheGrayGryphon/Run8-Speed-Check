@@ -30,6 +30,8 @@ last_player_name: Dict[int, str] = {}
 last_train_symbol: Dict[int, str] = {}
 speed_exceed_start: Dict[int, object] = {}
 prev_speed_snapshot: Dict[int, float] = {}
+zero_limit_pending: Dict[int, float] = {}
+zero_limit_announced: Set[int] = set()
 
 # State variables
 last_sim_time = None
@@ -47,6 +49,7 @@ discord_enabled = False
 discord_token = ""
 discord_alert_channel = 0
 discord_status_channel = 0
+periodic_announce_time = 0
 messages = {}
 
 # .NET and Discord objects
@@ -70,7 +73,7 @@ def load_settings():
     global alert_speed, over_speed, alert_speed_timer, hard_couple_speed, verbose_logging
     global trona_alert_speed, trona_route_id, superc_alert_speed, superc_train_symbols
     global dispatcher_comms_path, discord_enabled, discord_token, discord_alert_role
-    global discord_alert_channel, discord_status_channel, messages
+    global discord_alert_channel, discord_status_channel, messages, periodic_announce_time
 
     with open(SETTINGS_FILE, "r") as f:
         data = json.load(f)
@@ -85,6 +88,7 @@ def load_settings():
     superc_alert_speed = float(data["SuperCAlertSpeed"])
     superc_train_symbols = data["SuperCTrainSymbols"]
     dispatcher_comms_path = data["DispatcherCommsPath"]
+    periodic_announce_time = data["PeriodicAnnounceTimer"]
 
     discord_enabled = bool(data["DiscordEnabled"])
     discord_token = data["DiscordBotToken"]
@@ -212,11 +216,11 @@ def on_simulation_state(sender, args):
 # =========================================================
 def format_msg(key, **kwargs):
     if key not in messages:
-        return ""
+        return "*ERROR: SpeederSettings.json key is not in messages*"
     try:
         return messages[key].format(**kwargs)
     except Exception:
-        return ""
+        return "*ERROR: An exception has occurred during message formatting. See the console for more details.*"
 
 
 def emit_disconnected_message():
@@ -237,22 +241,46 @@ def emit_disconnected_message():
 # TRAIN / RADIO / SPEEDING
 # =========================================================
 def send_zero_speed_limit_radio_if_needed(train):
+    global zero_limit_pending, zero_limit_announced
     if not mRun8:
         return
-    limit = int(train.TrainSpeedLimitMPH)
-    if limit == 0:
-        notice_template = messages.get("AutomatedNoticeMsg")
-        zero_template = messages.get("ZeroLimitMsg")
+    
+    try:
+        limit = int(train.TrainSpeedLimitMPH)
+    except Exception:
+        limit = 0
+    hp_per_ton = float(train.HpPerTon)
+    train_id = int(getattr(train, "TrainID", 0))
+    now = time.time()
 
-        if notice_template:
-            notice_msg = notice_template.format(train=train)
-            if notice_msg:
-                mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, notice_msg)
+    if hp_per_ton <= 0 or limit != 0:
+        zero_limit_pending.pop(train_id, None)
+        zero_limit_announced.discard(train_id)
+        return
 
-        if zero_template:
-            zero_msg = zero_template.format(train=train)
-            if zero_msg:
-                mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, zero_msg)
+    first_seen = zero_limit_pending.get(train_id)
+    if first_seen is None:
+        zero_limit_pending[train_id] = now
+        return
+
+    if (now - first_seen) < 3.0 or train_id in zero_limit_announced:
+        return
+
+    zero_limit_pending.pop(train_id, None)
+    notice_template = messages.get("AutomatedNoticeMsg")
+    zero_template = messages.get("ZeroLimitMsg")
+
+    if notice_template:
+        notice_msg = notice_template.format(train=train)
+        if notice_msg:
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, notice_msg)
+
+    if zero_template:
+        zero_msg = zero_template.format(train=train)
+        if zero_msg:
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, zero_msg)
+
+    zero_limit_announced.add(train_id)
 
 
 def handle_speeding(train, train_id, sim_now):
@@ -451,10 +479,12 @@ def on_train_data(sender, e):
             if discord_enabled and discord_status_channel and verbose_logging:
                 discord_send(discord_status_channel, msg)
             for d in [active_players, speeding_start, max_overspeed, last_axle_count, last_speed,
-                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start]:
+                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start,
+                      zero_limit_pending]:
                 d.pop(train_id, None)
             overspeed_warned.discard(train_id)
             sustained_warned.discard(train_id)
+            zero_limit_announced.discard(train_id)
 
         if current_engineer_type == int(EEngineerType.Player):
             last_player_name[train_id] = str(train.EngineerName)
@@ -466,12 +496,12 @@ def on_train_data(sender, e):
                 active_players[train_id] = sim_now
                 msg = format_msg("TookControlMsg", sim_now=sim_now, train=train)
                 print(msg)
-                send_zero_speed_limit_radio_if_needed(train)
                 if discord_enabled and discord_status_channel and verbose_logging:
                     discord_send(discord_status_channel, msg)
             else:
                 active_players[train_id] = sim_now
 
+            send_zero_speed_limit_radio_if_needed(train)
             handle_speeding(train, train_id, sim_now)
             handle_coupling(train, train_id, sim_now)
             last_speed[train_id] = current_speed
@@ -485,9 +515,17 @@ def on_train_data(sender, e):
 def monitor_player_trains():
     import System
     global last_data_received_ts, data_timeout_announced
+    periodic_announce_counter = periodic_announce_time
+    periodic_announce_msg = messages.get("PeriodicAnnounceMsg")
+    notice_msg = messages.get("AutomatedNoticeMsg")
     while True:
         time.sleep(1)
         now = time.time()
+        if periodic_announce_counter == periodic_announce_time:
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, notice_msg)
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, periodic_announce_msg)
+            periodic_announce_counter = 1
+        periodic_announce_counter += 1
         if last_data_received_ts is not None and (now - last_data_received_ts) > 5:
             if not data_timeout_announced:
                 emit_disconnected_message()
@@ -510,10 +548,12 @@ def monitor_player_trains():
             if discord_enabled and discord_status_channel and verbose_logging:
                 discord_send(discord_status_channel, msg)
             for d in [active_players, speeding_start, max_overspeed, last_axle_count, last_speed,
-                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start]:
+                      axle_increase_blocked_until, last_player_name, last_train_symbol, speed_exceed_start,
+                      zero_limit_pending]:
                 d.pop(tid, None)
             overspeed_warned.discard(tid)
             sustained_warned.discard(tid)
+            zero_limit_announced.discard(tid)
 
 
 # =========================================================
@@ -553,4 +593,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
