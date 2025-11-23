@@ -13,9 +13,10 @@
   "DiscordAlertChannel": 0,
   "DiscordAlertRole": 0,
   "DiscordStatusChannel": 0,
-  "DispatcherCommsPath": "F:\\Games\\Run8\\DispatcherComms.dll",
+  "DispatcherCommsPath": "C:\\Run8Studios\\Run8 Train Simulator V3\\DispatcherComms.dll",
   "VerboseLogging": true,
-  
+  "PeriodicAnnounceTimer": 1800,
+
   "Messages": {
     "ConnectedMsg": "[{stamp}] Run8 instance detected. Waiting on 'Allow External DS'",
     "DisconnectedMsg": "[{stamp}] Disconnected from Run8.",
@@ -27,8 +28,10 @@
     "TrainTimeoutMsg": "[{sim_now}] Player train {train_id} no longer reporting data.",
     "RelinquishMsg": "[{sim_now}] {train.EngineerName} relinquished control of {train.TrainSymbol}.",
     "TookControlMsg": "[{sim_now}] {train.EngineerName} took control of {train.TrainSymbol}, Loco: {train.RailroadInitials} {train.LocoNumber}, TrainID: {train.TrainID}",
-    "AutomatedNoticeMsg": "This is an automated message.",
-    "ZeroLimitMsg": "{train.EngineerName}, relinquish your train after changing the `Leader` to remove the 0 MPH speed limit.",
-    "StartupCompleteMsg": "Speeder connected to Run8 and is monitoring trains."
+    "AutomatedNoticeMsg": "This is an automated message:",
+    "ZeroLimitMsg": "{train.EngineerName}, relinquish your train after changing the `Leader` to fix a 0 MPH speed limit error.",
+    "StartupCompleteMsg": "Speeder connected to Run8 and is monitoring trains.",
+	"PeriodicAnnounceMsg": "Notice: Train speeds are monitored. Severe/sustained speeding & hard coupling is auto reported to staff."
   }
 }
+

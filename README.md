@@ -24,6 +24,7 @@ Setup Instructions:
   * OverSpeed: When player train speed is OverSpeed MPH > TrainSpeedLimitMPH, an excessive speed message is sent to the console and Discord (if configured as above).
   * HardCoupleSpeed: If the AxleCount of a player's train increases and their last known speed was > HardCoupleSpeed MPH, send a message to the console and Discord (if configured).
   * DispatcherCommsPath: Point this to your main Run8 directory, where your DispatcherComms.dll is already installed.
+  * PeriodAnnounceTimer: If not 0, send AutomatedNoticeMsg and PeriodicAnnounceMsg every seconds to Run8 so they appear in game on Channel 00.
   * VerboseLogging: If true, all routine (non-alert) messages will be sent to Discord.  If false, only alert messages will be sent to Discord (but everything is still printed to the console).
 * Edit the following special case settings if needed:
   * SuperCAlertSpeed: The speedy intermodals that were capable of passenger speeds will have their TrainSpeedLimitMPH offset by the numeric value.

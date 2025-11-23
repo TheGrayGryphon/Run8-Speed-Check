@@ -49,6 +49,7 @@ discord_enabled = False
 discord_token = ""
 discord_alert_channel = 0
 discord_status_channel = 0
+periodic_announce_time = 0
 messages = {}
 
 # .NET and Discord objects
@@ -72,7 +73,7 @@ def load_settings():
     global alert_speed, over_speed, alert_speed_timer, hard_couple_speed, verbose_logging
     global trona_alert_speed, trona_route_id, superc_alert_speed, superc_train_symbols
     global dispatcher_comms_path, discord_enabled, discord_token, discord_alert_role
-    global discord_alert_channel, discord_status_channel, messages
+    global discord_alert_channel, discord_status_channel, messages, periodic_announce_time
 
     with open(SETTINGS_FILE, "r") as f:
         data = json.load(f)
@@ -87,6 +88,7 @@ def load_settings():
     superc_alert_speed = float(data["SuperCAlertSpeed"])
     superc_train_symbols = data["SuperCTrainSymbols"]
     dispatcher_comms_path = data["DispatcherCommsPath"]
+    periodic_announce_time = data["PeriodicAnnounceTimer"]
 
     discord_enabled = bool(data["DiscordEnabled"])
     discord_token = data["DiscordBotToken"]
@@ -214,11 +216,11 @@ def on_simulation_state(sender, args):
 # =========================================================
 def format_msg(key, **kwargs):
     if key not in messages:
-        return ""
+        return "*ERROR: SpeederSettings.json key is not in messages*"
     try:
         return messages[key].format(**kwargs)
     except Exception:
-        return ""
+        return "*ERROR: An exception has occurred during message formatting. See the console for more details.*"
 
 
 def emit_disconnected_message():
@@ -513,9 +515,18 @@ def on_train_data(sender, e):
 def monitor_player_trains():
     import System
     global last_data_received_ts, data_timeout_announced
+    periodic_announce_counter = periodic_announce_time
+    periodic_announce_msg = messages.get("PeriodicAnnounceMsg")
+    notice_msg = messages.get("AutomatedNoticeMsg")
     while True:
         time.sleep(1)
         now = time.time()
+        if periodic_announce_counter == periodic_announce_time and periodic_announce_time != 0:
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, notice_msg)
+            mRun8.SendRadioText(DISPATCHER_RADIO_CHANNEL, periodic_announce_msg)
+            periodic_announce_counter = 1
+        if periodic_announce_time != 0:
+            periodic_announce_counter += 1
         if last_data_received_ts is not None and (now - last_data_received_ts) > 5:
             if not data_timeout_announced:
                 emit_disconnected_message()
