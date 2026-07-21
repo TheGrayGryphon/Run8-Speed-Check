@@ -29,7 +29,7 @@
     "SustSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id}, has been speeding for >= {minutes} minutes - currently {current:.1f}/{limit:.1f} in block {train.BlockID}.",
     "CoupledMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol} coupled at {speed:.1f} MPH ",
     "DamageCarMsg": [
-      "KERBLAM, rough train handling detected. Adjust {damageCarCount} cars to GATX (SP), or RIP (ATSF).",
+      "KERBLAM, rough train handling detected. Adjust {damageCarCount} car(s) to GATX (SP), or RIP (ATSF).",
 	  "ExampleMessage2",
 	  "ExampleMessage3"
     ],
