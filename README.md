@@ -23,6 +23,7 @@ Setup Instructions:
   * AlertSpeedTimer: If the player remains AlertSpeed > TrainSpeedLimitMPH for AlertSpeedTimer seconds, send a message to the console and Discord (if configured).
   * OverSpeed: When player train speed is OverSpeed MPH > TrainSpeedLimitMPH, an excessive speed message is sent to the console and Discord (if configured as above).
   * HardCoupleSpeed: If the AxleCount of a player's train increases and their last known speed was > HardCoupleSpeed MPH, send a message to the console and Discord (if configured).
+  * DamageCoupleSpeed: If the AxleCount of a player's train increases and their last known speed was > DamageCoupleSpeed MPH, send a message to Run8. Include damageCarCount in the DamageCarMsg. damageCarCount will RNG a number using the limits DamageCarCountLower and DamageCarCountUpper.
   * DispatcherCommsPath: Point this to your main Run8 directory, where your DispatcherComms.dll is already installed.
   * PeriodAnnounceTimer: If not 0, send AutomatedNoticeMsg and PeriodicAnnounceMsg every seconds to Run8 so they appear in game on Channel 00.
   * VerboseLogging: If true, all routine (non-alert) messages will be sent to Discord.  If false, only alert messages will be sent to Discord (but everything is still printed to the console).
