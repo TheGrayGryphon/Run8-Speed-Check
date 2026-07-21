@@ -3,6 +3,9 @@
   "OverSpeed": 20,
   "AlertSpeedTimer": 300,
   "HardCoupleSpeed": 7,
+  "DamageCoupleSpeed": 5,
+  "DamageCarCountLower": 1,
+  "DamageCarCountUpper": 5,
   "TronaAlertSpeed": 20,
   "TronaRouteID": 320,
   "SuperCAlertSpeed": 25,
@@ -25,6 +28,11 @@
     "OvrSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol} {train_id} needs to be banned for speeding >= {over:.1f} MPH over limit ({current:.1f}/{limit:.1f}) in block {train.BlockID}.",
     "SustSpeedBanMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol}, {train_id}, has been speeding for >= {minutes} minutes - currently {current:.1f}/{limit:.1f} in block {train.BlockID}.",
     "CoupledMsg": "[{sim_now}] {train.EngineerName}, {train.TrainSymbol} coupled at {speed:.1f} MPH ",
+    "DamageCarMsg": [
+      "KERBLAM, rough train handling detected. Adjust {damageCarCount} cars to GATX (SP), or RIP (ATSF).",
+	  "ExampleMessage2",
+	  "ExampleMessage3"
+    ],
     "TrainTimeoutMsg": "[{sim_now}] Player train {train_id} no longer reporting data.",
     "RelinquishMsg": "[{sim_now}] {train.EngineerName} relinquished control of {train.TrainSymbol}.",
     "TookControlMsg": "[{sim_now}] {train.EngineerName} took control of {train.TrainSymbol}, Loco: {train.RailroadInitials} {train.LocoNumber}, TrainID: {train.TrainID}",
